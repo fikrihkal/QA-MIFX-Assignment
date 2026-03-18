@@ -1,0 +1,17 @@
+{
+  "name": "saucedemo-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "cucumber-js features/**/*.feature --require features/step_definitions/**/*.js --require support/hooks.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.7.0",
+    "chromedriver": "^146.0.4",
+    "selenium-webdriver": "^4.41.0"
+  }
+}
