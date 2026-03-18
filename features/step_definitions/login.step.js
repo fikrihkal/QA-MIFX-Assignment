@@ -13,7 +13,6 @@ When("user memasukkan username {string} dan password {string}", async function (
   const usernameField = await driver.wait(until.elementLocated(By.id("user-name")), 10000);
   await usernameField.clear();
   if (username !== "") await usernameField.sendKeys(username);
-
   const passwordField = await driver.findElement(By.id("password"));
   await passwordField.clear();
   if (password !== "") await passwordField.sendKeys(password);
@@ -37,39 +36,56 @@ Then("user berhasil masuk ke halaman inventory", async function () {
 When("user klik hamburger menu", async function () {
   const driver = getDriver();
   await driver.wait(until.elementLocated(By.id("react-burger-menu-btn")), 10000);
-  await driver.findElement(By.id("react-burger-menu-btn")).click();
+  const btn = await driver.findElement(By.id("react-burger-menu-btn"));
+  await driver.executeScript("arguments[0].click();", btn);
+  await driver.sleep(2000);
 });
 
 When("user klik logout", async function () {
   const driver = getDriver();
   await driver.wait(until.elementLocated(By.id("logout_sidebar_link")), 10000);
-  await driver.findElement(By.id("logout_sidebar_link")).click();
+  const logoutBtn = await driver.findElement(By.id("logout_sidebar_link"));
+  await driver.executeScript("arguments[0].click();", logoutBtn);
+  await driver.sleep(3000);
+  const url = await driver.getCurrentUrl();
+  console.log("URL setelah logout:", url);
 });
 
 Then("user diarahkan ke halaman login", async function () {
   const driver = getDriver();
-  await driver.wait(until.elementLocated(By.id("login-button")), 10000);
-  const btn = await driver.findElement(By.id("login-button"));
-  const isDisplayed = await btn.isDisplayed();
-  if (!isDisplayed) {
-    throw new Error("Login page not displayed after logout");
+  const url = await driver.getCurrentUrl();
+  console.log("URL check login page:", url);
+  if (url.includes("inventory")) {
+    throw new Error(`Logout gagal, masih di: ${url}`);
   }
+  await driver.wait(until.elementLocated(By.id("login-button")), 10000);
 });
 
 // Func-003 About
 When("user klik about", async function () {
   const driver = getDriver();
-  await driver.wait(until.elementLocated(By.id("about_sidebar_link")), 10000);
+  await driver.wait(until.elementIsVisible(
+    await driver.findElement(By.id("about_sidebar_link"))
+  ), 10000);
   await driver.findElement(By.id("about_sidebar_link")).click();
+  await driver.sleep(3000);
+  const url = await driver.getCurrentUrl();
+  console.log("URL setelah klik About:", url);
 });
 
 Then("user diarahkan ke halaman saucelabs", async function () {
   const driver = getDriver();
-  await driver.wait(until.urlContains("saucelabs.com"), 15000);
-  const url = await driver.getCurrentUrl();
-  if (!url.includes("saucelabs.com")) {
-    throw new Error(`Expected saucelabs.com but got: ${url}`);
+  await driver.sleep(2000);
+  const handles = await driver.getAllWindowHandles();
+  console.log("Jumlah tab:", handles.length);
+  for (const handle of handles) {
+    await driver.switchTo().window(handle);
+    const url = await driver.getCurrentUrl();
+    console.log("Tab URL:", url);
+    if (url.includes("saucelabs")) return;
   }
+  const currentUrl = await driver.getCurrentUrl();
+  throw new Error(`Expected saucelabs.com but got: ${currentUrl}`);
 });
 
 // Func-004 Buy item
@@ -81,18 +97,48 @@ When("user klik add to cart pada Sauce Labs Backpack", async function () {
 
 When("user klik shopping cart", async function () {
   const driver = getDriver();
-  await driver.wait(until.elementLocated(By.className("shopping_cart_link")), 10000);
-  await driver.findElement(By.className("shopping_cart_link")).click();
+  await driver.wait(until.elementLocated(By.css(".shopping_cart_link")), 10000);
+  const cartBtn = await driver.findElement(By.css(".shopping_cart_link"));
+  await driver.executeScript("arguments[0].click();", cartBtn);
+  await driver.sleep(1000);
+  const url = await driver.getCurrentUrl();
+  console.log("URL setelah klik cart:", url);
 });
 
 When("user klik checkout", async function () {
   const driver = getDriver();
-  await driver.wait(until.elementLocated(By.id("checkout")), 10000);
-  await driver.findElement(By.id("checkout")).click();
+  await driver.sleep(1000);
+  const url = await driver.getCurrentUrl();
+  console.log("URL sebelum checkout:", url);
+  // Coba berbagai selector
+  try {
+    await driver.wait(until.elementLocated(By.id("checkout")), 5000);
+    await driver.findElement(By.id("checkout")).click();
+  } catch (e) {
+    try {
+      await driver.findElement(By.css("[data-test='checkout']")).click();
+    } catch (e2) {
+      const btns = await driver.findElements(By.tagName("button"));
+      for (const btn of btns) {
+        const text = await btn.getText();
+        console.log("Button ditemukan:", text);
+        if (text.toLowerCase().includes("checkout")) {
+          await btn.click();
+          break;
+        }
+      }
+    }
+  }
+  await driver.sleep(1000);
+  const urlAfter = await driver.getCurrentUrl();
+  console.log("URL setelah checkout:", urlAfter);
 });
 
 When("user mengisi first name {string} last name {string} postal code {string}", async function (firstName, lastName, postalCode) {
   const driver = getDriver();
+  await driver.sleep(1000);
+  const url = await driver.getCurrentUrl();
+  console.log("URL di halaman form:", url);
   await driver.wait(until.elementLocated(By.id("first-name")), 10000);
   await driver.findElement(By.id("first-name")).sendKeys(firstName);
   await driver.findElement(By.id("last-name")).sendKeys(lastName);
@@ -157,7 +203,7 @@ Then("produk ditampilkan dari harga terendah ke tertinggi", async function () {
   }
 });
 
-// Func-006, 007, 008, 009, 010 Error messages
+// Negative cases
 Then("muncul pesan error {string}", async function (expectedMessage) {
   const driver = getDriver();
   await driver.wait(until.elementLocated(By.css("[data-test='error']")), 10000);
